@@ -34,6 +34,12 @@ Output:
 email: samuel.polk@tufts.edu
 %} 
 
+if isfield(Hyperparameters, 'TimeIdx')
+    ms_on = 1;
+    disp(strcat('Beginning LUND Clustering:', num2str(Hyperparameters.TimeIdx(1)), '/', num2str(Hyperparameters.TimeIdx(2))))
+else
+    ms_on = 0;
+end
 if ~isfield(Hyperparameters, 'NEigs')
     Hyperparameters.NEigs = size(G.EigenVecs,2);
 end
@@ -60,8 +66,12 @@ parfor i=1:n
         rt(i) = min(pdist2(DiffusionMap(i,:),DiffusionMap(p>p(i),:)));
     end
         
-    if mod(i,100) == 0
-        disp(strcat('Rho calculation, ', num2str((1-i/n)*100, 3), '% complete.'))
+    if mod(i,500) == 0
+        if ms_on 
+            disp(strcat('Rho calculation, ', num2str((1-i/n)*100, 3), '% complete for LUND clustering:', num2str(Hyperparameters.TimeIdx(1)), '/', num2str(Hyperparameters.TimeIdx(2))))
+        else
+            disp(strcat('Rho calculation, ', num2str((1-i/n)*100, 3), '% complete. '))
+        end
     end
 end
 
@@ -96,8 +106,12 @@ else
             [~,temp_idx] = min(Dtxi);
             C(i) = C(candidates(temp_idx));
         end
-        if mod(j,100) == 1
-            disp(strcat('Non-modal labeling, ', num2str((j/n)*100, 3), '% complete.'))
+        if mod(j,500) == 0
+            if ms_on 
+                disp(strcat('Non-modal labeling, ', num2str((1-j/n)*100, 3), '% complete for LUND clustering:', num2str(Hyperparameters.TimeIdx(1)), '/', num2str(Hyperparameters.TimeIdx(2))))
+            else
+                disp(strcat('Non-modal labeling, ', num2str((1-j/n)*100, 3), '% complete. '))
+            end
         end
         
     end
