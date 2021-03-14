@@ -3,6 +3,7 @@
 This toolbox allows the implementation of the following diffusion-based clustering algorithms on very large datasets:
 
  - Learning by Unsupervised Nonlinear Diffusion (LUND)
+ - Multiscale Learning by Unsupervised Nonlinear Diffusion (M-LUND)
 
 Once this toolbox is downloaded, please do the following procedure. It only needs to be done once.
 
