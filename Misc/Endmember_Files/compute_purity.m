@@ -52,7 +52,7 @@ elseif strcmp(Hyperparameters.EndmemberParams.Algorithm, 'N-FINDR')
 
 elseif strcmp(Hyperparameters.EndmemberParams.Algorithm, 'N-FINDR-I')
 
-    [endmembers,~] = EIA_NFINDR(X,K+2,200); % 2 additional endmembers. Truncated later.
+    [endmembers,~] = EIA_NFINDR(X',K+2,200,Hyperparameters.SpatialParams.ImageSize); % 2 additional endmembers. Truncated later.
     
     abundance = reshape(hyperNnls(X', endmembers)', M, N, K+2);
     abundance = abundance(:,:,3:K+2);    
