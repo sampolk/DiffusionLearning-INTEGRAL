@@ -24,15 +24,13 @@ Hyperparameters.SpatialParams.ImageSize = [500,500];
 Hyperparameters.DiffusionNN = 100;
 Hyperparameters.NEigs = 10;
 Hyperparameters.DiffusionTime = 0;
-Hyperparameters.NumDtNeighbors = 400;
-Hyperparameters.Beta = 2;
+Hyperparameters.NumDtNeighbors = 200;
+Hyperparameters.Beta = 3;
 Hyperparameters.Tau = 10^(-5);
 
 % Endmember algorithm specifications
 Hyperparameters.EndmemberParams.Algorithm = 'N-FINDR';
 Hyperparameters.EndmemberParams.K = 7; 
-
-Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
 
 save_on = 0;
 plot_on = 1;
@@ -80,13 +78,18 @@ Clusterings = MLUND_large(X, Hyperparameters, G, p);
 
 if save_on
     save(strcat('MLUND.mat'), 'Clusterings')
-end
+end 
+
 if plot_on 
     
     nontrivial_K = unique(Clusterings.K(and(Clusterings.K>1, Clusterings.K<n/2)));
     n_nontrivial_K = length(nontrivial_K);
     
-    if mod(n_nontrivial_K, 3) == 1 && mod(n_nontrivial_K, 4) == 1
+    if n_nontrivial_K == 1
+        n_row = 1;
+        n_col = 1;
+   
+    elseif mod(n_nontrivial_K, 3) == 1 && mod(n_nontrivial_K, 4) == 1
         
         n_row = ceil(sqrt(n_nontrivial_K));
         n_col = ceil(sqrt(n_nontrivial_K));
@@ -106,7 +109,7 @@ if plot_on
     for plot_idx = 1:n_nontrivial_K
         subplot(n_row, n_col, plot_idx)
         
-        t = find(Clusterings.K == nontrivial_K(i), 1, 'first');
+        t = find(Clusterings.K == nontrivial_K(plot_idx), 1, 'first');
     
         imagesc(reshape(Clusterings.Labels(:,t),500,500))
         pbaspect([1,1,1])
@@ -129,7 +132,11 @@ if plot_on
     nontrivial_K = unique(Clusterings.K(and(Clusterings.K>1, Clusterings.K<n/2)));
     n_nontrivial_K = length(nontrivial_K);
     
-    if mod(n_nontrivial_K, 3) == 1 && mod(n_nontrivial_K, 4) == 1
+    if n_nontrivial_K == 1
+        n_row = 1;
+        n_col = 1;
+        
+    elseif mod(n_nontrivial_K, 3) == 1 && mod(n_nontrivial_K, 4) == 1
         
         n_row = ceil(sqrt(n_nontrivial_K));
         n_col = ceil(sqrt(n_nontrivial_K));
@@ -149,7 +156,7 @@ if plot_on
     for plot_idx = 1:n_nontrivial_K
         subplot(n_row, n_col, plot_idx)
         
-        t = find(Clusterings.K == nontrivial_K(i), 1, 'first');
+        t = find(Clusterings.K == nontrivial_K(plot_idx), 1, 'first');
     
         imagesc(reshape(Clusterings.Labels(:,t),500,500))
         pbaspect([1,1,1])

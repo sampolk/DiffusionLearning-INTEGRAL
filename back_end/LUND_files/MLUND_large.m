@@ -51,11 +51,8 @@ if isreal(T)
     Ct = zeros(n,T+2);
     Kt = zeros(T+2,1);
     Dt = zeros(n,T+2);
-    for i = 1:T+2
-        Hyperparameters.DiffusionTime = timesamples(i);
-        Hyperparameters.TimeIdx = [i,T+2];
-
-        [Ct(:,i),Kt(i), Dt(:,i)] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, G, p);
+    parfor i = 1:T+2
+        [Ct(:,i),Kt(i), Dt(:,i)] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters,timesamples(i), G, p );
     end
 
     % ============================ VI analysis ============================

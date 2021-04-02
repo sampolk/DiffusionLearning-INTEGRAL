@@ -1,4 +1,4 @@
-function [C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, G, p)
+function [C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, t, G, p)
 %{
  - This function produces a structure with multiscale clusterings produced
    with the LUND algorithm, presented in the following paper. 
@@ -12,16 +12,17 @@ function [C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperpar
         - Murphy, James M and Polk, Sam L., 2020. A Multiscale Environment 
           for Learning By Diffusion. arXiv preprint, arXiv:2102.00500.
         - Polk, Sam L. and Murphy James M., 2021. Multiscale Spectral-
-          Spatial Diffusion Geometry for Hyperspectral Image Clustering. 
+          Spatial Diffusion Geometry for Hyperspectral Image Clusteri
           (In Review)
 
 Inputs: X:                      Data matrix.
         Hyperparameters:        Optional structure with graph parameters
                                 with required fields:  
-                                    - DiffusionTime:    Diffusion time parameter.
+        t:                      Diffusion time parameter.
         G:                      Graph structure computed using  
                                 'extract_graph_large.m' 
-        p:                      Kernel Density Estimator (Optional).
+        p:                      Kernel Density Estimator.
+        time_idx:                      Kernel Density Estimator.
 
 Output: 
             - C:                n x 1 vector storing the LUND clustering 
@@ -32,49 +33,58 @@ Output:
 
 © 2021 Sam L Polk, Tufts University. 
 email: samuel.polk@tufts.edu
-%} 
+%}  
 
-if isfield(Hyperparameters, 'TimeIdx')
-    ms_on = 1;
-    disp(strcat('Beginning LUND Clustering:', num2str(Hyperparameters.TimeIdx(1)), '/', num2str(Hyperparameters.TimeIdx(2))))
-else
-    ms_on = 0;
-end
 if ~isfield(Hyperparameters, 'NEigs')
     Hyperparameters.NEigs = size(G.EigenVecs,2);
 end
+if ~isfield(Hyperparameters, '')
+    Hyperparameters.DtNNs = 100;
+end
 
 n = length(X);
-C = zeros(n,1);
 
 % Calculate diffusion map
-DiffusionMap = zeros(size(G.EigenVecs,1), Hyperparameters.NEigs);
-parfor l = 1:size(DiffusionMap,2)
-    DiffusionMap(:,l) = G.EigenVecs(:,l).*(G.EigenVals(l).^Hyperparameters.DiffusionTime);
+DiffusionMap = zeros(n,Hyperparameters.NEigs);
+for l = 1:size(DiffusionMap,2)
+    DiffusionMap(:,l) = G.EigenVecs(:,l).*(G.EigenVals(l).^t);
 end
 
 disp('Diffusion Map Calculated')
 
+tic
+% Compute Hyperparameters.NumDtNeighbors Dt-nearest neighbors.
+[IdxNN, D] = knnsearch(DiffusionMap, DiffusionMap, 'K', Hyperparameters.NumDtNeighbors);
+disp('Nearest Neighbor Searches Complete')
+toc
+tic
 % compute rho_t(x), stored as rt
 rt = zeros(n,1);
 p_max = max(p);
-% p_pct = prctile(p, Hyperparameters.PPct);
-parfor i=1:n
+for i=1:n
     if p(i) == p_max
         rt(i) = max(pdist2(DiffusionMap(i,:),DiffusionMap));
     else
-        rt(i) = min(pdist2(DiffusionMap(i,:),DiffusionMap(p>p(i),:)));
-    end
+        [~, IdxNN_dense, ~] = intersect(IdxNN(i,:), find(p>p(i)), 'stable');  
         
-    if mod(i,500) == 0
-        if ms_on 
-            disp(strcat('Rho calculation, ', num2str((1-i/n)*100, 3), '% complete for LUND clustering:', num2str(Hyperparameters.TimeIdx(1)), '/', num2str(Hyperparameters.TimeIdx(2))))
+        if ~isempty(IdxNN_dense)
+            % In this case, at least one of the Hyperparameters.NumDtNeighbors Dt-nearest neighbors
+            % of X(i,:) is also higher density, so we have already
+            % calculated rho_t(X(i,:)).
+            dt_temp = D(i,IdxNN_dense);
+            rt(i) = dt_temp(1);
         else
-            disp(strcat('Rho calculation, ', num2str((1-i/n)*100, 3), '% complete. '))
+            % In this case, none of the first Hyperparameters.NumDtNeighbors Dt-nearest neighbors of
+            % X(i,:) are also higher density. So, we do the full search.
+            rt(i) = min(pdist2(DiffusionMap(i,:),DiffusionMap(p>p(i),:)));
         end
     end
+    if mod(i,5000)==0
+        disp(strcat('Rho_t(x) Calculation, ', num2str(floor(i/n*100)),  '% Complete'))
+    end
 end
-
+disp('Rho_t(x) Calculation Complete')
+toc
 % Extract Dt(x) and sort in descending order
 Dt = rt.*p;
 [~, m_sorting] = sort(Dt,'descend');
@@ -92,27 +102,39 @@ if K == 1
     C = ones(n,1);
 else
 
+    C = zeros(n,1);
     % Label modes
     C(m_sorting(1:K)) = 1:K;
 
     % Label non-modal points according to the label of their Dt-nearest
     % neighbor of higher density that is already labeled.
     [~,l_sorting] = sort(p,'descend');
+    tic
     for j = 1:n
         i = l_sorting(j);
         if C(i)==0 % unlabeled point
-            candidates = find(and(p>=p(i), C>0));% Labeled points of higher density. 
-            Dtxi = pdist2(DiffusionMap(i,:),DiffusionMap(candidates,:));
-            [~,temp_idx] = min(Dtxi);
-            C(i) = C(candidates(temp_idx));
-        end
-        if mod(j,500) == 0
-            if ms_on 
-                disp(strcat('Non-modal labeling, ', num2str((1-j/n)*100, 3), '% complete for LUND clustering:', num2str(Hyperparameters.TimeIdx(1)), '/', num2str(Hyperparameters.TimeIdx(2))))
+            
+            candidates = find(and(C>0, p>p(i))); % Labeled, higher-density points.
+            IdxNN_i = intersect(IdxNN(i,:), candidates, 'stable');
+            
+            if isempty(IdxNN_i)
+                % None of the Dt-nearest neighbors are also higher-density
+                % & labeled. So, we do a full search.
+                [~,temp_idx] = min(pdist2(DiffusionMap(i,:), DiffusionMap(candidates,:)));
+                C(i) = C(candidates(temp_idx));    
             else
-                disp(strcat('Non-modal labeling, ', num2str((1-j/n)*100, 3), '% complete. '))
+                % At least one of the Dt-nearest neighbors is higher
+                % density & labeled. So, we pick the closest point.
+                C(i) = C(IdxNN_i(1));                
             end
         end
-        
+        if mod(j,5000)==0
+            disp(strcat('Non-modal labeling, ', num2str(floor(j/n*100)),  '% Complete'))
+        end
     end
+    
+    toc
+
 end 
+
+disp(strcat('LUND Clustering Complete.'))

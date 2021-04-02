@@ -24,13 +24,13 @@ Hyperparameters.SpatialParams.ImageSize = [500,500];
 Hyperparameters.DiffusionNN = 100;
 Hyperparameters.NEigs = 10;
 Hyperparameters.DiffusionTime = 0;
-Hyperparameters.NumDtNeighbors = 400;
+Hyperparameters.NumDtNeighbors = 200;
 
 % Endmember algorithm specifications
 Hyperparameters.EndmemberParams.Algorithm = 'N-FINDR';
-Hyperparameters.EndmemberParams.K = 7; 
+Hyperparameters.EndmemberParams.K = 5; 
 
-Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
+% Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
 
 save_on = 0;
 plot_on = 1;
@@ -74,7 +74,7 @@ end
 
 %% Calculate LUND Clustering
 
-[C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, G, p);
+[C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters,Hyperparameters.DiffusionTime, G, p);
 
 if save_on
     save(strcat('LUND.mat'), 'C', 'K','Dt', 'Hyperparameters')
@@ -95,7 +95,6 @@ Clustering = LUNDEndmember(X, Hyperparameters, Idx_NN, Dist_NN, G);
 if save_on
     save(strcat('LUND_Endmember.mat'), 'Clustering')
 end
-
 if plot_on 
     imagesc(reshape(Clustering.Labels,500,500))
     pbaspect([1,1,1])
