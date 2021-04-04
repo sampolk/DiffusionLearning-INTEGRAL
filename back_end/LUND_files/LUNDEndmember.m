@@ -74,7 +74,7 @@ else
     Clustering.PixelPurity = p;
 end
 
-[C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, G, p);
+[C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters,Hyperparameters.DiffusionTime, G, p);
 
 % Store Results
 Clustering.Labels = C;
