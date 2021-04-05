@@ -28,9 +28,9 @@ Hyperparameters.NumDtNeighbors = 200;
 
 % Endmember algorithm specifications
 Hyperparameters.EndmemberParams.Algorithm = 'N-FINDR';
-Hyperparameters.EndmemberParams.K = 5; 
+% Hyperparameters.EndmemberParams.K = 5; 
 
-% Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
+Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
 
 save_on = 0;
 plot_on = 1;
