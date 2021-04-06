@@ -28,7 +28,7 @@ else
         if ~isfield(Hyperparameters, 'Sigma')
             sigma = prctile(Dist_NN(:,1:NN),50,'all');
         else
-            sigma = Hyperparmeters.Sigma;
+            sigma = Hyperparameters.Sigma;
         end
 
         W = sparse(ind_row, ind_col, exp(-(Dist_NN.^2)./(sigma^2))); % construct W
