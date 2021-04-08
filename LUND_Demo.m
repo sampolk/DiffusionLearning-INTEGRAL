@@ -9,12 +9,12 @@ Remarks:
     computer has 8 GB of RAM.
 
 %}
-%% Load data and nearest neighbors
 
 load('normalized_data_NNs.mat')
 Dist_NN = [D1, D2, D3, D4];
 Idx_NN = [Idx1, Idx2, Idx3, Idx4];
 clear 'D1' 'D2' 'D3' 'D4' 'Idx1' 'Idx2' 'Idx3' 'Idx4'
+
 
 %% Set Hyperparameters
 % 
@@ -28,9 +28,9 @@ Hyperparameters.NumDtNeighbors = 200;
 
 % Endmember algorithm specifications
 Hyperparameters.EndmemberParams.Algorithm = 'N-FINDR';
-% Hyperparameters.EndmemberParams.K = 5; 
+Hyperparameters.EndmemberParams.K = 5; 
 
-Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
+% Hyperparameters.K_Known = 5; % Optional parameter. If included, it is assigned as the number of clusters. Else, K is found fully unsupervised.
 
 save_on = 0;
 plot_on = 1;
@@ -38,6 +38,7 @@ plot_on = 1;
 %% Calculate Density
 
 p = KDE_large(Dist_NN, Hyperparameters);
+p(p<prctile(p,0.01)) = prctile(p,0.01); % Density is rapidly decaying for low-density points, so we set a floor at the 99.99th percentile of p to aid in mode detection. 
 
 if save_on
     save('density.mat','p', 'Hyperparameters')
@@ -51,6 +52,7 @@ if plot_on
     title('$\log_{10}(p)$', 'interpreter' , 'latex')
     caxis([prctile(log10(p),1), prctile(log10(p),99)])
 end
+
 
 %% Calculate Graph Structure
 
@@ -74,7 +76,7 @@ end
 
 %% Calculate LUND Clustering
 
-[C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters,Hyperparameters.DiffusionTime, G, p);
+[C, K, Dt] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, Hyperparameters.DiffusionTime, G, p);
 
 if save_on
     save(strcat('LUND.mat'), 'C', 'K','Dt', 'Hyperparameters')

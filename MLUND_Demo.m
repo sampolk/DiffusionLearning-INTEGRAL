@@ -25,7 +25,7 @@ Hyperparameters.DiffusionNN = 100;
 Hyperparameters.NEigs = 10;
 Hyperparameters.DiffusionTime = 0;
 Hyperparameters.NumDtNeighbors = 200;
-Hyperparameters.Beta = 3;
+Hyperparameters.Beta = 2;
 Hyperparameters.Tau = 10^(-5);
 
 % Endmember algorithm specifications
@@ -38,6 +38,7 @@ plot_on = 1;
 %% Calculate Density
 
 p = KDE_large(Dist_NN, Hyperparameters);
+p(p<prctile(p,0.01)) = prctile(p,0.01);
 
 if save_on
     save('density.mat','p', 'Hyperparameters')
@@ -73,7 +74,7 @@ if plot_on
 end
 
 %% Calculate M-LUND Clusterings
-
+ 
 Clusterings = MLUND_large(X, Hyperparameters, G, p);
 
 if save_on

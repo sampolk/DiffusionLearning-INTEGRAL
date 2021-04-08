@@ -50,10 +50,11 @@ X=X./repmat(sqrt(sum(X.*X,1)),size(X,1),1); % Normalize HSI
 
 if nargin>1
     % store distances 
+    Mdl = KDTreeSearcher(X);
     Dist_NN = zeros(n,NN_max);
     Idx_NN = zeros(n,NN_max);
     parfor i = 1:n
-        [idx, dist_idx] = knnsearch(X, X(i,:), 'K', (NN_max+1));
+        [idx, dist_idx] = knnsearch(Mdl, X(i,:), 'K', (NN_max+1));
         Dist_NN(i,:) = dist_idx(2:end);
         Idx_NN(i,:) = idx(2:end);
         disp(strcat('Nearest neighbors, ', num2str((1-i/n)*100, 3), '% complete.'))

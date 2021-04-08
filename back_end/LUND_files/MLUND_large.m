@@ -52,7 +52,12 @@ if isreal(T)
     Kt = zeros(T+2,1);
     Dt = zeros(n,T+2);
     parfor i = 1:T+2
-        [Ct(:,i),Kt(i), Dt(:,i)] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters,timesamples(i), G, p );
+        t = timesamples(i);
+        [C, K, Dt_temp] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, t, G, p);
+        Ct(:,i) = C;
+        Kt(i) = K
+        Dt(:,i) = Dt_temp;
+        disp(strcat('LUND Clusterings:', num2str(i), '/', num2str(T+2), ', Complete'))
     end
 
     % ============================ VI analysis ============================

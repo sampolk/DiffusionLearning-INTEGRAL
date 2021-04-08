@@ -84,11 +84,9 @@ Dt = rt.*p;
 % Determine K based on the ratio of sorted Dt(x_{m_k}). 
 if isfield(Hyperparameters, 'K_Known')
     K = Hyperparameters.K_Known;
-elseif isfield(Hyperparameters, 'NumClusterBound')
-    n_max = Hyperparameters.NumClusterBound;
-    [~, K] = max(Dt(m_sorting(1:n_max-1))./Dt(m_sorting(2:n_max)));
 else
-    [~, K] = max(Dt(m_sorting(1:n-1))./Dt(m_sorting(2:n)));
+    [~, K] =max (Dt(m_sorting(2:n/2-1))./Dt(m_sorting(3:n/2)));
+    K=K+1;
 end
 
 if K == 1

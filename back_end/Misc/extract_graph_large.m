@@ -12,7 +12,6 @@ end
 if isfield(Hyperparameters.SpatialParams, 'SpatialRadius') 
 
     W = spatial_weight_matrix(X,Hyperparameters);
-    disp([])
     
 else
     
