@@ -31,7 +31,7 @@ else
             sigma = Hyperparameters.Sigma;
         end
 
-        W = sparse(ind_row, ind_col, exp(-(Dist_NN.^2)./(sigma^2))); % construct W
+        W = sparse(ind_row, ind_col, exp(-(Dist_NN(:,1:NN).^2)./(sigma^2))); % construct W
     end
 end
 
