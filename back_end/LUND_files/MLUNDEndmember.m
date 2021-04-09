@@ -65,9 +65,11 @@ if isfield(Hyperparameters, 'IncludeDensity')
         
     else 
         p = PixelPurity;
+        density = NaN;
     end
 else
     p = PixelPurity;
+    density = NaN;
 end
 
 Clusterings = MLUND_large(X, Hyperparameters, G, p);
@@ -75,5 +77,5 @@ Clusterings = MLUND_large(X, Hyperparameters, G, p);
 % Store Results
 Clusterings.PixelPurity = PixelPurity;
 Clusterings.Endmembers  = endmembers;
-Clusterings.Density     = Density;
+Clusterings.Density     = density;
 

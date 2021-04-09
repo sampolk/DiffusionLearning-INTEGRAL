@@ -45,21 +45,28 @@ for i = 2:length(NNs)
     Hyperparameters.DensityNN = NNs(i); % must be ≤ 3500
     
     for j = 1:length(prctiles)
-        Hyperparameters.Sigma0 = prctile(Dist_NN(:,1:Hyperparameters.DensityNN),prctiles(j), 'all');
-    
-    
-        % Calculate Density
+        
+        file_name = strcat('M-LUND-', num2str(NNs(i)), '-', num2str(prctiles(j)), '.mat');
+        
+        if ~isfile(file_name)
+        
+            Hyperparameters.Sigma0 = prctile(Dist_NN(:,1:Hyperparameters.DensityNN),prctiles(j), 'all');
 
-        p = KDE_large(Dist_NN, Hyperparameters);
-        p(p<prctile(p,0.01)) = prctile(p,0.01); % Density is rapidly decaying for low-density points, so we set a floor at the 99.99th percentile of p to aid in mode detection. 
 
+            % Calculate Density
 
-        G = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
+            p = KDE_large(Dist_NN, Hyperparameters);
+            p(p<prctile(p,0.01)) = prctile(p,0.01); % Density is rapidly decaying for low-density points, so we set a floor at the 99.99th percentile of p to aid in mode detection. 
 
-        Clusterings = MLUND_large(X, Hyperparameters, G, p);
+            G = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
 
-        save(strcat('M-LUND-', num2str(NNs(i)), '-', num2str(prctiles(j))), 'Clusterings')
-        disp([i,j]/[length(NNs), 24])
+            Clusterings = MLUND_large(X, Hyperparameters, G, p);
+            Clusterings_NFINDR = MLUNDEndmember(X, Hyperparameters, Idx_NN, Dist_NN, G);
+
+            save(file_name, 'Clusterings', 'Clusterings_NFINDR')
+        end
+        
+        disp([i/length(NNs), j/length(prctiles)])
 
     end
     
