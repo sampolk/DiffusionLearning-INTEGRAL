@@ -55,6 +55,7 @@ end
 
 % compute rho_t(x), stored as rt
 rt = zeros(n,1);
+p = p./sum(p);
 p_max = max(p);
 for i=1:n
     if p(i) == p_max
@@ -71,10 +72,12 @@ for i=1:n
         else
             % In this case, none of the first Hyperparameters.NumDtNeighbors Dt-nearest neighbors of
             % X(i,:) are also higher density. So, we do the full search.
+            
+            
+            
             rt(i) = min(pdist2(DiffusionMap(i,:),DiffusionMap(p>p(i),:)));
         end
     end
-
 end
  
 % Extract Dt(x) and sort in descending order
@@ -85,7 +88,7 @@ Dt = rt.*p;
 if isfield(Hyperparameters, 'K_Known')
     K = Hyperparameters.K_Known;
 else
-    [~, K] =max (Dt(m_sorting(2:n/2-1))./Dt(m_sorting(3:n/2)));
+    [~, K] = max(Dt(m_sorting(2:ceil(n/2)-1))./Dt(m_sorting(3:ceil(n/2))));
     K=K+1;
 end
 
@@ -113,6 +116,10 @@ else
                 % None of the Dt-nearest neighbors are also higher-density
                 % & labeled. So, we do a full search.
                 candidates = idx(and(C>0, p>p(i))); % All labeled points of higher density.
+                if isempty(candidates)
+                    disp([])
+                end
+                
                 [~,temp_idx] = min(pdist2(DiffusionMap(i,:), DiffusionMap(candidates,:)));
                 C(i) = C(candidates(temp_idx));    
             else

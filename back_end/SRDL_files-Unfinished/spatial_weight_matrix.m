@@ -33,73 +33,46 @@ NN = Hyperparameters.DiffusionNN;
 
 if strcmp(Hyperparameters.WeightType, 'gaussian')
     sigma = Hyperparameters.Sigma;
-end
+end 
 
-indices = 1:n;
+idx_row = zeros(n*NN,1);  % Rows where nonzero elements appear in W
+idx_col = zeros(n*NN,1);  % Columns where nonzero elements appear in W
+vals    = zeros(n*NN,1);  % Variable to store edge weights
 
-idx_row = zeros(n, NN);  % Rows where nonzero elements appear in W
-idx_col = zeros(n, NN);  % Columns where nonzero elements appear in W
-vals    = zeros(n, NN);  % Variable to store edge weights
-
-
-times = zeros(n, 3);
-
-
+ct = 1;
 for idx = 1:n
     
-    tic
+    % Find the spatial nearest neighbors of the point X(idx,:)
     [i,j] = ind2sub([M,N], idx);
     NN_Idx=FindNeighbors([i,j], R, M, N); % indices of the spatial nearest neighbors of ij pixel of X.
-    NN_Count=length(NN_Idx);
-    times(idx,1) = toc;
+    NN_Count=length(NN_Idx); % Number of spatial nearest neighbors of X(idx,:);
     
-    tic
     Xi_rep = repmat(X(idx,:),NN_Count,1); % Spectra of ij pixel of X, repeated in each row.
     X_NNs = X(NN_Idx,:); % Spectra of spatial nearest neighbors of ij pixel
         
-    DistTemp=sqrt(sum((Xi_rep - X_NNs).^2,2)); % distance between ij pixel of X and its spatial nearest neighbors
+    DistTemp=sqrt(sum((Xi_rep - X_NNs).^2,2)); % distance between X(idx,:) and its spatial nearest neighbors
     [NN_Dists,Idx]=sort(DistTemp,'ascend');
-    NN_Idx=NN_Idx(Idx);
+    NN_Idx=NN_Idx(Idx); 
     
-    times(idx,2) = toc;
+    nEdge = min(NN_Count, NN); 
     
+    idx_row(ct:ct+nEdge) = idx;
+    idx_col(ct:ct+nEdge) = NN_Idx(1:nEdge);
     
-    tic
-    if NN_Count>=NN
-    
-        % Distances between X(idx,:) and nearest neighbors of X(idx,:) in spatial search
-        idx_row(idx,:) = idx;
-        idx_col(idx,:) = NN_Idx(1:NN);
-
-        if strcmp(Hyperparameters.WeightType, 'adjesency')
-            vals(idx,:) = ones(NN,1);
-        else
-            vals(idx,:) = exp(-(NN_Dists(1:NN).^2)./(sigma^2));
-        end  
-        
+    if strcmp(Hyperparameters.WeightType, 'adjesency')
+        vals(ct:ct+nEdge) = 1; 
     else
-        
-        nmissing = NN-NN_Count;
-        
-        temp = indices(~(ismember(indices,NN_Idx)));
-        col_filler = temp(1:nmissing);
-        val_filler = zeros(1,nmissing);
-        
-        % Distances between X(idx,:) and nearest neighbors of X(idx,:) in spatial search
-        idx_row(idx,:) = idx;
-        idx_col(idx,:) = [NN_Idx, col_filler];
+        vals(ct:ct+nEdge) = exp(-(NN_Dists(1:nEdge).^2)./(sigma^2));
+    end  
 
-        if strcmp(Hyperparameters.WeightType, 'adjesency')
-            vals(idx,:) = [ones(NN_Count,1),val_filler] ;
-        else
-            vals(idx,:) = [exp(-(NN_Dists.^2)./(sigma^2)),val_filler];
-        end          
-        
-    end    
-    times(idx,3) = toc;
-    
+    ct = ct+nEdge+1;
     disp(idx/n)
 end
+
+% Truncate values we didn't use.
+idx_row(ct:end) = [];
+idx_col(ct:end) = [];
+vals(ct:end) = [];
 
 W = sparse(idx_row, idx_col, vals);
 

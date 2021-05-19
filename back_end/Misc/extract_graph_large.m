@@ -40,12 +40,20 @@ W = (W+W')./2;   %  (W+W)./2 forces symmetry
 [V,D, flag] = eigs(spdiags(1./sum(W)',0,n,n)*W, n_eigs, 'largestabs'); 
     
 if flag
+    % Didn't converge. Try again with larger subspace dimension.
+    [V,D, flag] = eigs(spdiags(1./sum(W)',0,n,n)*W, n_eigs, 'largestabs',  'SubspaceDimension', max(4*n_eigs,40));  
+end
+
+
+if flag
     disp('Convergence Failed.')
     G = NaN;
 else
     [lambda,idx] = sort(diag(abs(D)),'descend');
     lambda(1) = 1;
+    V(:,1) = 1;
     V = real(V(:,idx));
+    
 
     G.Hyperparameters = Hyperparameters;
     G.EigenVecs = V;

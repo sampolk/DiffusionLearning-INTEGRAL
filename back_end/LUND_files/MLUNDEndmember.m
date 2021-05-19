@@ -1,4 +1,4 @@
-function Clusterings = MLUNDEndmember(X, Hyperparameters, Idx_NN, Dist_NN, G)
+function Clusterings = MLUNDEndmember(X, Hyperparameters, Idx_NN, Dist_NN, G, PixelPurity, endmembers)
 %{
  - This function produces a structure with clustering produced with the 
    M-LUND algorithm, presented in the following paper. 
@@ -49,18 +49,21 @@ Outputs:    Clustering Structure with the following fields:
 if nargin == 4
     % Compute Graph
     G = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
+
+    % Compute pixel purity
+    [PixelPurity, endmembers,~] = compute_purity(X,Hyperparameters);
+    
+elseif nargin == 5
+    % Compute pixel purity
+    [PixelPurity, endmembers,~] = compute_purity(X,Hyperparameters);
 end
 
-% Compute pixel purity
-[PixelPurity, endmembers] = compute_purity(X,Hyperparameters);
 
 if isfield(Hyperparameters, 'IncludeDensity')
     if Hyperparameters.IncludeDensity
 
         % Compute Density
         density = KDE_large(Dist_NN, Hyperparameters);
-        
-
         p = harmmean([PixelPurity./max(PixelPurity), density./max(density)],2);
         
     else 

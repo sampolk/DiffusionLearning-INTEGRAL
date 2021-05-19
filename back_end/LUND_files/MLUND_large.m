@@ -55,9 +55,9 @@ if isreal(T)
         t = timesamples(i);
         [C, K, Dt_temp] = LearningbyUnsupervisedNonlinearDiffusion_large(X, Hyperparameters, t, G, p);
         Ct(:,i) = C;
-        Kt(i) = K
+        Kt(i) = K;
         Dt(:,i) = Dt_temp;
-        disp(strcat('LUND Clusterings:', num2str(i), '/', num2str(T+2), ', Complete'))
+%         disp(strcat('LUND Clusterings:', num2str(i), '/', num2str(T+2), ', Complete'))
     end
 
     % ============================ VI analysis ============================
@@ -86,5 +86,18 @@ if isreal(T)
     Clusterings.Dt = Dt;
 
 else
-    Clusterings = NaN;
+    % Store results in structure "Clusterings"
+    Clusterings.Graph = G;
+    Clusterings.Hyperparameters = Hyperparameters;
+    Clusterings.Labels = ones(n,1);
+    Clusterings.K = NaN;
+    
+    TotalVI.Vector = zeros(real(T)+2,1);
+    TotalVI.Vector(:) = NaN; 
+    TotalVI.Minimizer_Idx = NaN;
+    
+    Clusterings.TotalVI = TotalVI;
+    Clusterings.TimeSamples = NaN;
+    Clusterings.Density = p;
+    Clusterings.Dt = NaN*ones(n,1);
 end

@@ -37,6 +37,8 @@ for i=2:nargin
        otherwise, error('parameter [%d] is unknown',i);
    end
 end
+verbose =0;
+
 
 [L,N] = size(y);
 if L<2, error('Too few bands to estimate the noise.'); end
@@ -88,39 +90,27 @@ kf = sum(cost_F<0);
 Ek = E(:,ind_asc(1:kf));
 if verbose,fprintf(1,'The signal subspace dimension is: k = %d\n',kf);end
 
-% only for plot purposes, equation (19)
-% Py_sort =  trace(Ry) - cumsum(Py(ind_asc));
-% Pn_sort = 2*cumsum(Pn(ind_asc));
-% cost_F_sort = Py_sort + Pn_sort;
-% 
-% indice=1:50;
-% figure
-%    set(gca,'FontSize',12,'FontName','times new roman')
-%    semilogy(indice,cost_F_sort(indice),'-',indice,Py_sort(indice),':',indice,Pn_sort(indice),'-.', 'Linewidth',2,'markersize',5)
-%    xlabel('k');ylabel('mse(k)');title('HySime')
-%    legend('Mean Squared Error','Projection Error','Noise Power')
-
-
 varargout(1) = {kf};
 if nargout == 2, varargout(2) = {Ek};end
 return
 
 
-function [w,Rw]=estAdditiveNoise(r,verbose);
+function [w,Rw]=estAdditiveNoise(r,verbose) 
 
+verbose = 0;
 small = 1e-6;
-verbose = ~strcmp(lower(verbose),'off');
-[L N] = size(r);
+verbose = 0;
+[L, N] = size(r);
 % the noise estimation algorithm
 w=zeros(L,N);
-if verbose, 
+if verbose 
    fprintf(1,'computing the sample correlation matrix and its inverse\n');
 end
 RR=r*r';     % equation (11)
 RRi=inv(RR+small*eye(L)); % equation (11)
-if verbose, fprintf(1,'computing band    ');end;
+if verbose, fprintf(1,'computing band    ');end
 for i=1:L
-    if verbose, fprintf(1,'\b\b\b%3d',i);end;
+    if verbose, fprintf(1,'\b\b\b%3d',i);end
     % equation (14)
     XX = RRi - (RRi(:,i)*RRi(i,:))/RRi(i,i);
     RRa = RR(:,i); RRa(i)=0; % this remove the effects of XX(:,i)
