@@ -38,7 +38,7 @@ P_Rp = sum(Rd(:).^2)/N + rMean.'*rMean;
 SNR = abs(10*log10( (P_Rp - (q/L)*P_R) / (P_R - P_Rp) ));
 snrEstimate = SNR;
 
-% fprintf('SNR estimate [dB]: %g\n', SNR);
+fprintf('SNR estimate [dB]: %g\n', SNR);
 
 % Determine which projection to use.
 SNRth = 15 + 10*log(q) + 8;

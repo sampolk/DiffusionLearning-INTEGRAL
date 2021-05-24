@@ -80,8 +80,9 @@ elseif strcmp(Hyperparameters.EndmemberParams.Algorithm, 'PLM')
     abundances = Unmixing.Abundance;
     endmembers = Unmixing.Endmembers;
     
+elseif strcmp(Hyperparameters.EndmemberParams.Algorithm, 'MVC-NMF')
+    [endmembers, abundances, ~, ~] = mvcnmf_shell(X, K);
 end
-    
 
 abundances = reshape(abundances,M*N,K);
 abundances = abundances./sum(abundances,2); % Row normalize to make a distribution

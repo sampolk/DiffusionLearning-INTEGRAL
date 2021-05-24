@@ -72,9 +72,6 @@ for i=1:n
         else
             % In this case, none of the first Hyperparameters.NumDtNeighbors Dt-nearest neighbors of
             % X(i,:) are also higher density. So, we do the full search.
-            
-            
-            
             rt(i) = min(pdist2(DiffusionMap(i,:),DiffusionMap(p>p(i),:)));
         end
     end
