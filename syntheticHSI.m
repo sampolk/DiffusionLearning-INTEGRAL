@@ -41,6 +41,8 @@ n = length(X);
 Hyperparameters.SpatialParams.ImageSize = [50,50];
 Hyperparameters.DiffusionNN = 1000;
 Hyperparameters.DensityNN = 10;
+Hyperparameters.Sigma0 = prctile(Dist_NN(:,1:Hyperparameters.DensityNN), 90,'all');
+Hyperparameters.AbundanceTimeStep = 2^15;
 Hyperparameters.WeightType = 'gaussian';
 Hyperparameters.Sigma = 0.5;
 Hyperparameters.AbundanceSigma = 0.4;
@@ -53,7 +55,23 @@ Hyperparameters.Tau = 10^(-5);
 Hyperparameters.Tolerance = 10^(-8);
 Hyperparameters.K_Known = 3;
 
-%% Extract Graph 
+%% Clustering of Synthetic HSI - Summary
+
+C = DVIS(extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN),  KDE_large(Dist_NN,Hyperparameters), Hyperparameters);
+
+scatter(X(:,1), X(:,2), 36, C, 'filled')
+axis equal tight
+title('D-VIS Results')
+
+disp('Performance of D-VIS:')
+disp(nmi(C,Y))
+
+%% Description of Next Sections
+%{
+We now will go step-by-step into why the algorithm works. Each of the
+following sections contains a step in the D-VIS algorithm and a plot. 
+%}
+%% 1. Extract Graph 
 
 G = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
 
@@ -82,7 +100,7 @@ for k = 1:n_plots
 end
 
 
-%% Spectral Clustering as Initialization
+%% 2. Spectral Clustering as Initialization
 
 close all
 
@@ -203,8 +221,6 @@ end
 
 %% Cluster using DVIS
 
-Hyperparameters.DensityNN = 10;
-Hyperparameters.Sigma0 = prctile(Dist_NN(:,1:Hyperparameters.DensityNN), 90,'all');
 
 p = KDE_large(Dist_NN,Hyperparameters);
 
