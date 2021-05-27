@@ -57,7 +57,6 @@ if isreal(T)
         Ct(:,i) = C;
         Kt(i) = K;
         Dt(:,i) = Dt_temp;
-%         disp(strcat('LUND Clusterings:', num2str(i), '/', num2str(T+2), ', Complete'))
     end
 
     % ============================ VI analysis ============================
