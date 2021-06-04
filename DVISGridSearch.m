@@ -43,8 +43,8 @@ Idx_NN = Idx_NN(:,2:end);
 
 if norm(single(Dist_NN==0))>0 
     minval =  min(Dist_NN(Dist_NN>0));
-    for j = 1:size(Dist_NN,2)
-        Dist_NN(Dist_NN(:,j)==0,j) = minval/10;
+    for j1 = 1:size(Dist_NN,2)
+        Dist_NN(Dist_NN(:,j1)==0,j1) = minval/10;
     end
 end
 
@@ -55,6 +55,7 @@ Hyperparameters.NumDtNeighbors = 200;
 Hyperparameters.Beta = 2;
 Hyperparameters.Tau = 10^(-5);
 Hyperparameters.K_Known = length(unique(Y));
+Hyperparameters.Tolerance = 1e-8;
 
 clc
 prompt = 'Should the number of clusters and number of endmembers be learned from the data or ground truth? \n 1) Learned from data \n 2) Learned from ground truth \n';
@@ -104,6 +105,7 @@ if ~isempty(intersect(DataSelected, [7, 8]))
     Idx_NN = Idx_NN(:,2:end);
 
 end
+Hyperparameters.NEigs = max(length(unique(Y))+1, 10);
 
 
 profile off
@@ -116,153 +118,78 @@ disp('Set hyperparameter grid below to begin grid search')
 %% Set Hyperparameter Grid
 
 % Set number of nearest neighbors to use in graph and KDE construction.
-NNs = setdiff(unique([5,round(10.^(1:0.3:3),-1),999]), [1000]); 
+NNs_X = setdiff(unique([round(10.^(1.0:0.3:3),-1),999]), [1000]);
 
 % Set the percentiles of nearest neighbor distances to be used in KDE construction. 
-prctiles =5:10:95;
+prctiles = 10:10:100;
 
-%% Run Grid Search
 
-nmis = zeros(length(NNs), length(prctiles),length(prctiles), 2 + compare_on);
+%% Run Grid Search - Adjesency Matrix
 
-for i = 1:length(NNs)
+compare_on = 1;
+nmis = zeros(length(NNs_X), length(prctiles), 2 + compare_on);
+
+for i1 = 1:length(NNs_X)
     
-    Hyperparameters.DiffusionNN = NNs(i);
-    Hyperparameters.DensityNN = NNs(i); % must be ≤ 1000
+    Hyperparameters.DiffusionNN = NNs_X(i1);
+    Hyperparameters.DensityNN = NNs_X(i1); % must be ≤ 1000
         
-    if compare_on
-        % Evaluate Spectral Clustering on graph
-        
-        n_eigs = Hyperparameters.NEigs;
-        % Spectral Clustering
-        Hyperparameters.NEigs = Hyperparameters.K_Known;
-        GX = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
-        if GX.EigenVals(2)<1
-            nmis(i,:,:,4) = nmi(SpectralClustering(GX,Hyperparameters.K_Known),Y);
-        else
-            nmis(i,:,:,4) = NaN;
-        end
-        Hyperparameters.NEigs = n_eigs; % Reset no. eigenvalues
-    end
-    
-    Hyperparameters.IncludeDensity = 0;
-    GX = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
-    
-    if GX.EigenVals(2)<1   
-         
-        for j = 1:length(prctiles)
-            
-            % Compute KDE using original dataset
-            Hyperparameters.Sigma0 = prctile(Dist_NN(:,1:Hyperparameters.DensityNN), prctiles(j), 'all');
-            density = KDE_large(Dist_NN, Hyperparameters);
-            
-            if Hyperparameters.Sigma0>0 && sum(density == max(density)) <  length(unique(Y))
-                                
-                % M-LUND In Its Original Form - Just uses KDE
-                Clusterings_MLUND = MLUND_large(X, Hyperparameters, GX, density);
-                [performance1,t] = measure_performance(Clusterings_MLUND, Y);
-                nmis(i,j,:,1) = performance1(1);
-                disp(strcat('Alg 1 NNs:', num2str(floor((i-1)/length(NNs)*100)), '% Complete. prctiles:',num2str(floor((j-1)/length(prctiles)*100)), '% Complete.'))
-                
-                C = Clusterings_MLUND.Labels(:,t);
-                t = Clusterings_MLUND.TimeSamples(t);
-                
-                % Compute truncated diffusion map
-                n_eigs = find(GX.EigenVals(1:10).^t>1e-10, 1,'last');
-                DiffusionMap = zeros(size(GX.EigenVecs,1),n_eigs-1);
-                parfor k = 2:n_eigs
-                    DiffusionMap(:,k-1) = GX.EigenVecs(:,k).*(GX.EigenVals(k)^t);
-                end
-                
-                % Implement VCA on Diffusion Map.
-                M = vca(DiffusionMap',  'Endmembers', max(hysime(DiffusionMap(:,2:end)'),3) , 'verbose','off');
-                % Calculate Abundances using sparse solver
-                A =  hyperNnls( DiffusionMap', M )';
-                purity = max(A,[],2);
-
-                % Implement final clustering
-                Clusterings = MLUND_large(X, Hyperparameters, GX, harmmean([purity./max(purity), density./max(density)],2));
-                performance = measure_performance(Clusterings,Y);
-                nmis(i,j,:,2) = performance(1);
-                disp(strcat('Alg 2 NNs:', num2str(floor((i-1)/length(NNs)*100)), '% Complete. prctiles:',num2str(floor((j-1)/length(prctiles)*100)), '% Complete.'))
-                
-                % Perform nearest neighbor searches on A
-                [Idx, Dist] = knnsearch(A, A, 'K', Hyperparameters.DiffusionNN+1);
-                Idx = Idx(:,2:end);
-                Dist = Dist(:,2:end);
-
-                % Extract Graph and KDE
-                G = extract_graph_large(A, Hyperparameters, Idx, Dist);
-                
-                if G.EigenVals(2)<1
-                    for k = 1:length(prctiles)
-
-                        density = KDE_large(Dist, Hyperparameters);
-                        if sum(density == max(density)) <  length(unique(Y)) && Hyperparameters.Sigma0>0
-                            Clusterings = MLUND_large(A, Hyperparameters, G, KDE_large(Dist, Hyperparameters));
-                            performance = measure_performance(Clusterings,Y);
-                            nmis(i,j,k,3) = performance(1);
-                        end
-                    end
-                end
-                disp(strcat('Alg 3 NNs:', num2str(floor((i-1)/length(NNs)*100)), '% Complete. prctiles:',num2str(floor((j-1)/length(prctiles)*100)), '% Complete.'))
-                
-                density = KDE_large(Dist_NN, Hyperparameters);
-                % Implement VCA on each cluster in the coordinates of the Diffusion Map.
-                M = [];
-                parfor k = 1:K 
-
-                    Xk = DiffusionMap(C == k,:);
-                    NumEndmembers = max([hysime(Xk'),3]);
-
-                    Mk = vca(Xk',  'Endmembers', NumEndmembers , 'verbose','off');
-                    M = [M,Mk];
-                end
-                M = MinSubset(M, 1e-8);
-                A =  hyperNnls( DiffusionMap', M )';
-
-                purity = max(A,[],2);
-
-                % Implement final clustering
-                Clusterings = MLUND_large(X, Hyperparameters, GX, harmmean([purity./max(purity), density./max(density)],2));
-                performance = measure_performance(Clusterings,Y);
-                nmis(i,j,:,4) = performance(1);
-                disp(strcat('Alg 4 NNs:', num2str(floor((i-1)/length(NNs)*100)), '% Complete. prctiles:',num2str(floor((j-1)/length(prctiles)*100)), '% Complete.'))
-                
-                % Perform nearest neighbor searches on A
-                [Idx, Dist] = knnsearch(A, A, 'K', Hyperparameters.DiffusionNN+1);
-                Idx = Idx(:,2:end);
-                Dist = Dist(:,2:end);
-
-                % Extract Graph and KDE
-                G = extract_graph_large(A, Hyperparameters, Idx, Dist);
-                if G.EigenVals(2)<1
-                    for k = 1:length(prctiles)
-
-                        Hyperparameters.Sigma0 = prctile(Dist, prctiles(k),'all');
-                        
-                        density = KDE_large(Dist, Hyperparameters);
-                        if sum(density == max(density)) <  length(unique(Y)) && Hyperparameters.Sigma0>0
-                            Clusterings = MLUND_large(A, Hyperparameters, G, KDE_large(Dist, Hyperparameters));
-                            performance = measure_performance(Clusterings,Y);
-                            nmis(i,j,k,5) = performance(1);
-                        end
-                    end       
-                end
-                disp(strcat('Alg 5 NNs:', num2str(floor((i-1)/length(NNs)*100)), '% Complete. prctiles:',num2str(floor((j-1)/length(prctiles)*100)), '% Complete.'))
-
-            else
-                nmis(i,j,:,:) = NaN;
-            end
+    % Extract Graph
+    if isfield(Hyperparameters, 'K_Known')
+        n_eigs = Hyperparameters.K_Known;
+        if n_eigs>Hyperparameters.NEigs
+            Hyperparameters.NEigs = Hyperparameters.K_Known;
         end
     else
-        nmis(i,:,:,:) = NaN;  
+        n_eigs = Hyperparameters.NEigs;
+    end     
+    
+    GX = extract_graph_large(X, Hyperparameters, Idx_NN, Dist_NN);
+    
+    if GX.EigenVals(2)<1
+        
+        C_SC = SpectralClustering(GX,Hyperparameters.K_Known);
+        if compare_on
+            nmis(i1,:,3) = nmi(C_SC,Y);
+        end
+        GX.EigenVecs(:,n_eigs+2:end) = [];
+        
+        
+        for j1 = 1:length(prctiles)
+            
+            % Compute KDE using original dataset
+            Dist_temp = Dist_NN(:,1:Hyperparameters.DensityNN);            
+            Hyperparameters.Sigma0 = prctile(Dist_temp(Dist_temp>0), prctiles(j1), 'all');
+            density = KDE_large(Dist_NN, Hyperparameters);
+            
+            if sum(density == max(density)) < length(unique(Y))
+                                
+                % M-LUND In Its Original Form
+                Clusterings = MLUND_large(X, Hyperparameters, GX, density);
+                
+                if ~isnan(Clusterings.K)
+                    
+                    [performance1,t] = measure_performance(Clusterings, Y);
+                    C = Clusterings.Labels(:,t); % Best M-LUND Clustering
+                    purity = DVISpurity(GX, Hyperparameters.Tolerance, C);
+                    
+                    Clusterings = MLUND_large(X, Hyperparameters, GX, harmmean([density./max(density), purity./max(purity)],2));
+                    [performance2,~] = measure_performance(Clusterings, Y);
+                    
+                    nmis(i1,j1,1:2) = [performance1(1); performance2(1)];   
+                    
+                    disp(num2str([100*[i1-1,j1]./[length(NNs_X), length(prctiles)], performance1(1), performance2(1)],3))
+                end
+            end
+        end
     end
 end
-        
+
+compare_on = 1;
+%%
 if compare_on
     
-    nmi_summary = zeros(1,8);    
+    nmi_summary = zeros(1,7);    
     
     % K-Means Clustering
     nmi_summary(1) = nmi( kmeans(X, Hyperparameters.K_Known),Y);
@@ -290,24 +217,24 @@ if compare_on
     nmi_summary(4) = nmi( dbscan(X,median(Dist_NN(:,1:20),'all'),20), Y);
     
     % Spectral Clustering
-    nmi_summary(5) =  max(nmis(:,:,4),[],'all');
+    nmi_summary(5) =  max(nmis(:,:,3),[],'all');
     
-    for k = 1:3
+    for k = 1:2
         nmi_summary(5+k) = max(nmis(:,:,k),[],'all');
     end
     
-    variable_names = {'KMeans', 'K-MeansPCA', 'GMMPCA', 'DBSCAN', 'SC', 'MLUND', 'MLUNDVCA', 'MLUNDVCAKDE'};
+    variable_names = {'KMeans', 'K-MeansPCA', 'GMMPCA', 'DBSCAN', 'SC', 'MLUND', 'D-VIS'};
     nmi_summary = array2table(nmi_summary, 'VariableNames', variable_names);
 else
-    nmi_summary = zeros(1,3);
-    for k = 1:3
-        nmi_summary(k) = max(nmis(:,:,k),[],'all');
+    nmi_summary = zeros(1,2);
+    for k = 1:2
+        nmi_summary(k) = max(nmis(:,:,:,k),[],'all');
     end
 
-    variable_names = { 'MLUND', 'MLUNDVCA', 'MLUNDVCAKDE'};
+    variable_names = { 'MLUND', 'D-VIS'};
     nmi_summary = array2table(nmi_summary, 'VariableNames', variable_names);
 end
     
-save('summary_statistics', 'nmis', 'NNs', 'prctiles', 'nmi_summary')
+save('summary_statistics', 'nmis', 'NNs_X', 'prctiles','NNs_Ab', 'nmi_summary')
 
 disp(nmi_summary)
